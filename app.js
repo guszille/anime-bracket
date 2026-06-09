@@ -276,6 +276,14 @@ function roundLabel(r, total) {
   if (fromEnd === 3) return "Quarterfinals";
   return `Round ${r + 1}`;
 }
+// Japanese accent label for that shōnen-tournament flavor.
+function roundLabelJP(r, total) {
+  const fromEnd = total - r;
+  if (fromEnd === 1) return "決勝";
+  if (fromEnd === 2) return "準決勝";
+  if (fromEnd === 3) return "準々決勝";
+  return `第${r + 1}回戦`;
+}
 
 function slotHTML(id, isBye, isWinner, label) {
   if (!id) {
@@ -297,7 +305,7 @@ function renderBracket() {
   const total = state.rounds.length;
   state.rounds.forEach((round, r) => {
     const col = el("div", "round-col");
-    col.appendChild(el("div", "round-label", roundLabel(r, total)));
+    col.appendChild(el("div", "round-label", `${roundLabel(r, total)}<span class="round-label-jp">${roundLabelJP(r, total)}</span>`));
     round.forEach((m, i) => {
       const live = isLive(m);
       const done = !!m.winner;
@@ -348,7 +356,7 @@ function renderVote() {
   if (!isLive(m)) { state.activeMatch = firstLiveMatch(); return renderVote(); }
 
   const total = state.rounds.length;
-  $("#voteRound").textContent = roundLabel(am.round, total);
+  $("#voteRound").innerHTML = `${roundLabel(am.round, total)}<span class="jp">${roundLabelJP(am.round, total)}</span>`;
   const idxLive = liveIndexInfo(am);
   $("#voteProgress").textContent = `Match ${idxLive.pos} of ${idxLive.total} this round`;
 
@@ -357,7 +365,7 @@ function renderVote() {
 
   $("#matchup").innerHTML = `
     ${fighterHTML(a, m.votes[0], 0, lead === 0)}
-    <div class="vs-badge">VS</div>
+    <div class="vs-badge"><span class="vs-text">VS</span><span class="vs-jp">対戦</span></div>
     ${fighterHTML(b, m.votes[1], 1, lead === 1)}`;
 
   $("#matchup").querySelectorAll("[data-step]").forEach(btn => {
@@ -422,10 +430,14 @@ function renderChampion() {
   if (!champId) { setView("bracket"); return; }
   const c = byId(champId);
   $("#championCard").innerHTML = `
-    <div class="crown">👑</div>
-    <div class="label">Champion</div>
-    ${imgTag(c.img, "")}
-    <h2>${esc(c.name)}</h2>`;
+    <div class="rays"></div>
+    <div class="champ-inner">
+      <div class="crown">👑</div>
+      <div class="rank">SSR</div>
+      <div class="label">Champion <span class="jp">優勝</span></div>
+      <div class="champ-frame">${imgTag(c.img, "")}<span class="sparkle s1">✦</span><span class="sparkle s2">✧</span><span class="sparkle s3">✦</span></div>
+      <h2>${esc(c.name)}</h2>
+    </div>`;
   spawnConfetti();
 }
 
