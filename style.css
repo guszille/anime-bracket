@@ -78,7 +78,24 @@ html, body {
 }
 
 main { padding: 26px; max-width: 1200px; margin: 0 auto; }
-@media (max-width: 560px) { main { padding: 16px; } }
+
+/* On phones, stack header rows so primary buttons get full width
+   instead of being squished into multi-line blocks. */
+@media (max-width: 560px) {
+  main { padding: 16px; }
+
+  /* Bracket header: title, then status pill, then full-width button */
+  .view-head { flex-direction: column; align-items: stretch; gap: 12px; }
+  .view-actions { flex-direction: column; align-items: stretch; gap: 8px; }
+  .view-actions .primary-btn { white-space: nowrap; }
+  .status-pill { text-align: center; }
+
+  /* Setup roster header: title row, then Shuffle + Start on their own row */
+  .roster-head { flex-direction: column; align-items: stretch; gap: 12px; }
+  .roster-actions { width: 100%; }
+  .roster-actions .primary-btn { flex: 1; white-space: nowrap; }
+  .roster-actions .ghost-btn { white-space: nowrap; }
+}
 
 /* ---------- Buttons ---------- */
 .primary-btn {
