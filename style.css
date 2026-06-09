@@ -68,7 +68,17 @@ html, body {
 }
 .ghost-btn:hover { color: var(--text); border-color: var(--accent-2); }
 
+/* Compact, two-row header on phones so nothing gets clipped */
+@media (max-width: 560px) {
+  .topbar { flex-wrap: wrap; padding: 10px 14px; gap: 10px; }
+  .logo { font-size: 17px; white-space: nowrap; }
+  .tabs { order: 3; width: 100%; margin-left: 0; justify-content: center; }
+  .tab { padding: 8px 14px; }
+  .ghost-btn { margin-left: auto; padding: 7px 12px; }
+}
+
 main { padding: 26px; max-width: 1200px; margin: 0 auto; }
+@media (max-width: 560px) { main { padding: 16px; } }
 
 /* ---------- Buttons ---------- */
 .primary-btn {
