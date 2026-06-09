@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anime Bracket — Tournament Manager</title>
+  <link rel="preconnect" href="https://api.jikan.moe" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1 class="logo">🏆 Anime Bracket</h1>
+    <nav class="tabs" id="nav">
+      <button class="tab" data-view="setup">Setup</button>
+      <button class="tab" data-view="bracket">Bracket</button>
+      <button class="tab" data-view="vote">Vote</button>
+    </nav>
+    <button class="ghost-btn" id="resetBtn" title="Start over">Reset</button>
+  </header>
+
+  <main id="app">
+    <!-- ============ SETUP VIEW ============ -->
+    <section class="view" data-view="setup">
+      <div class="setup-grid">
+        <div class="panel">
+          <h2>Find competitors</h2>
+          <div class="search-row">
+            <input id="searchInput" type="text" placeholder="Search an anime title…" autocomplete="off" />
+            <span class="spinner" id="searchSpinner" hidden></span>
+          </div>
+          <p class="hint" id="searchHint">Type at least 2 characters. Results come from MyAnimeList via Jikan.</p>
+          <div class="results" id="searchResults"></div>
+        </div>
+
+        <div class="panel">
+          <div class="roster-head">
+            <h2>Roster <span class="count" id="rosterCount">0</span></h2>
+            <div class="roster-actions">
+              <button class="ghost-btn" id="shuffleBtn" disabled title="Randomize seed order">🎲 Shuffle</button>
+              <button class="primary-btn" id="startBtn" disabled>Start tournament →</button>
+            </div>
+          </div>
+          <p class="hint" id="rosterHint">Add at least 2 anime to begin. Non-power-of-2 counts get byes.</p>
+          <div class="roster" id="rosterList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BRACKET VIEW ============ -->
+    <section class="view" data-view="bracket" hidden>
+      <div class="view-head">
+        <h2 id="bracketTitle">Bracket</h2>
+        <div class="view-actions">
+          <span class="status-pill" id="bracketStatus"></span>
+          <button class="primary-btn" id="goVoteBtn">Go to next match →</button>
+        </div>
+      </div>
+      <div class="bracket-scroll">
+        <div class="bracket" id="bracketTree"></div>
+      </div>
+    </section>
+
+    <!-- ============ VOTE VIEW ============ -->
+    <section class="view" data-view="vote" hidden>
+      <div class="vote-head">
+        <span class="round-pill" id="voteRound"></span>
+        <span class="match-progress" id="voteProgress"></span>
+      </div>
+      <div class="matchup" id="matchup"></div>
+      <div class="vote-controls" id="voteControls"></div>
+    </section>
+
+    <!-- ============ CHAMPION VIEW ============ -->
+    <section class="view champion-view" data-view="champion" hidden>
+      <div class="confetti" id="confetti"></div>
+      <div class="champion-card" id="championCard"></div>
+      <button class="primary-btn big" id="newTournamentBtn">New tournament</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
