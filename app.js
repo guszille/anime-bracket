@@ -66,6 +66,7 @@ async function searchAnime(query) {
     synopsis: a.synopsis || "No synopsis available.",
     year: a.year || a.aired?.prop?.from?.year || "",
     type: a.type || "",
+    episodes: a.episodes || null,
   }));
   searchCache.set(key, items);
   return items;
@@ -215,6 +216,9 @@ function updateNav() {
 }
 
 /* ---- Setup: search results ---- */
+// "12 eps" / "1 ep"; empty when episode count is unknown (ongoing/unreported).
+function epsLabel(n) { return n ? `${n} ep${n > 1 ? "s" : ""}` : ""; }
+
 let lastResults = [];
 function renderResults(items) {
   lastResults = items;
@@ -228,7 +232,7 @@ function renderResults(items) {
       ${imgTag(it.img, "")}
       <div class="meta">
         <div class="name">${esc(it.name)}</div>
-        <div class="sub">${esc([it.type, it.year].filter(Boolean).join(" · "))}</div>
+        <div class="sub">${esc([it.type, it.year, epsLabel(it.episodes)].filter(Boolean).join(" · "))}</div>
       </div>`;
     card.addEventListener("click", () => addToRoster(it));
     box.appendChild(card);
@@ -244,9 +248,13 @@ function renderRoster() {
   } else {
     state.roster.forEach((c, i) => {
       const item = el("div", "roster-item");
+      const eps = epsLabel(c.episodes);
       item.innerHTML = `
         ${imgTag(c.img, "")}
-        <span class="name">${esc(c.name)}</span>
+        <div class="r-info">
+          <span class="name">${esc(c.name)}</span>
+          ${eps ? `<span class="r-eps">📺 ${eps}</span>` : ""}
+        </div>
         <span class="seed">#${i + 1}</span>
         <button class="remove-btn" title="Remove">✕</button>`;
       item.querySelector(".remove-btn").addEventListener("click", () => removeFromRoster(c.id));

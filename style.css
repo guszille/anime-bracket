@@ -187,7 +187,7 @@ h2 { font-family: var(--display); font-style: italic; font-weight: 800;
   color: #fff; font-size: 14px; font-weight: 800; margin-left: 8px;
   font-family: var(--display); font-style: italic;
 }
-.roster { display: flex; flex-direction: column; gap: 8px; max-height: 460px; overflow-y: auto; margin-top: 6px; }
+.roster { display: flex; flex-direction: column; gap: 8px; max-height: 460px; overflow-y: auto; overflow-x: hidden; margin-top: 6px; padding: 2px; }
 .roster-item {
   display: flex; align-items: center; gap: 11px;
   background: rgba(7, 6, 15, 0.55); border: 1px solid var(--line);
@@ -196,7 +196,9 @@ h2 { font-family: var(--display); font-style: italic; font-weight: 800;
 }
 .roster-item:hover { border-left-color: var(--magenta); transform: translateX(2px); }
 .roster-item img { width: 40px; height: 54px; object-fit: cover; border-radius: 7px; }
-.roster-item .name { flex: 1; font-size: 14px; font-weight: 700; }
+.roster-item .r-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.roster-item .name { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster-item .r-eps { font-size: 11px; color: var(--muted); }
 .roster-item .seed { color: var(--cyan); font-size: 13px; font-family: var(--display); font-style: italic; font-weight: 700; }
 .remove-btn { background: transparent; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
 .remove-btn:hover { color: var(--magenta); background: rgba(255, 46, 116, 0.12); }
