@@ -24,9 +24,10 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
-html, body {
+html { min-height: 100%; background: var(--bg); }
+body {
   margin: 0;
-  min-height: 100%;
+  min-height: 100vh;
   color: var(--text);
   font-family: var(--body);
   background:
@@ -127,6 +128,7 @@ h2 { font-family: var(--display); font-style: italic; font-weight: 800;
 
 .panel {
   position: relative;
+  min-width: 0; /* allow the panel to shrink below its content's intrinsic width */
   background: linear-gradient(180deg, var(--panel), var(--bg-2));
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -157,8 +159,8 @@ h2 { font-family: var(--display); font-style: italic; font-weight: 800;
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .results {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px; max-height: 460px; overflow-y: auto; padding-right: 4px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr));
+  gap: 12px; max-height: 460px; overflow-y: auto; overflow-x: hidden; padding-right: 4px;
 }
 .result-card {
   position: relative; background: var(--bg); border: 1px solid var(--line);
@@ -376,9 +378,9 @@ h2 { font-family: var(--display); font-style: italic; font-weight: 800;
   .status-pill { text-align: center; }
 
   .roster-head { flex-direction: column; align-items: stretch; gap: 12px; }
-  .roster-actions { width: 100%; }
-  .roster-actions .primary-btn { flex: 1; white-space: nowrap; }
-  .roster-actions .ghost-btn { white-space: nowrap; }
+  .roster-actions { width: 100%; flex-direction: column; align-items: stretch; }
+  .roster-actions .primary-btn { white-space: nowrap; }
+  .roster-actions .ghost-btn { white-space: nowrap; margin-left: 0; text-align: center; }
 
   .vs-text { font-size: 42px; }
 }
