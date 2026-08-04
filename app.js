@@ -52,24 +52,42 @@ async function throttle() {
 }
 
 /* ---------- API availability ----------
-   "online" = Jikan answered (even an HTTP error like 429 means it's reachable).
-   "offline" = the request never got through (no network / DNS / timeout). */
+   "online"  = Jikan returned usable results.
+   "offline" = Jikan can't serve results right now, for any reason: no network,
+               a server error (5xx), or rate limiting (429). In every one of
+               those cases the user is blocked, so we offer manual entry. */
 let apiStatus = "unknown";
+let apiReason = "";   // "network" | "server" | "rate" — drives the banner wording
 let manualMode = false;
 
+function markApiDown(reason) {
+  apiStatus = "offline";
+  apiReason = reason;
+  renderApiBanner();
+}
+
+// Translate a failed search/health request into a reason code.
+function reasonFor(err) {
+  if (err instanceof TypeError) return "network";      // never reached Jikan
+  if (err && err.status === 429) return "rate";
+  return "server";
+}
+
 async function checkApiHealth() {
-  if (navigator.onLine === false) { apiStatus = "offline"; renderApiBanner(); return apiStatus; }
+  if (navigator.onLine === false) { markApiDown("network"); return apiStatus; }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
-    await fetch(`${JIKAN}/anime?q=one&limit=1`, { signal: ctrl.signal });
+    const res = await fetch(`${JIKAN}/anime?q=one&limit=1`, { signal: ctrl.signal });
+    if (!res.ok) { markApiDown(res.status === 429 ? "rate" : "server"); return apiStatus; }
     apiStatus = "online";
+    apiReason = "";
+    renderApiBanner();
   } catch (err) {
-    apiStatus = "offline";
+    markApiDown(err.name === "AbortError" ? "server" : reasonFor(err));
   } finally {
     clearTimeout(timer);
   }
-  renderApiBanner();
   return apiStatus;
 }
 
@@ -79,7 +97,11 @@ async function searchAnime(query) {
   await throttle();
   const url = `${JIKAN}/anime?q=${encodeURIComponent(query)}&limit=12&sfw=true&order_by=members&sort=desc`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Jikan ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(`Jikan ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   const json = await res.json();
   const items = (json.data || []).map(a => ({
     id: a.mal_id,
@@ -243,9 +265,14 @@ function renderApiBanner() {
   if (apiStatus !== "offline") { banner.hidden = true; return; }
   banner.hidden = false;
   banner.classList.toggle("compact", manualMode);
+  const headline = {
+    network: "Can't reach MyAnimeList.",
+    rate: "MyAnimeList is rate-limiting requests.",
+    server: "MyAnimeList is having server problems.",
+  }[apiReason] || "MyAnimeList search is unavailable.";
   $("#apiMsg").innerHTML = manualMode
-    ? `<strong>Manual mode.</strong> MyAnimeList search is offline — competitors are added by name.`
-    : `<strong>MyAnimeList search is unavailable.</strong> Proceed without it and add competitors by name?`;
+    ? `<strong>Manual mode.</strong> Search is unavailable — competitors are added by name.`
+    : `<strong>${headline}</strong> Proceed without it and add competitors by name?`;
   $("#apiManualBtn").hidden = manualMode;
 }
 
@@ -560,19 +587,14 @@ $("#searchInput").addEventListener("input", e => {
     try {
       const items = await searchAnime(q);
       apiStatus = "online";
+      apiReason = "";
       renderApiBanner();
       renderResults(items);
       $("#searchHint").textContent = items.length ? `${items.length} results — click to add.` : "No matches found.";
     } catch (err) {
-      // fetch() throws TypeError when the request never reached Jikan; an
-      // "Jikan <status>" Error means the API answered (e.g. rate limited).
-      if (err instanceof TypeError) {
-        apiStatus = "offline";
-        renderApiBanner();
-        $("#searchHint").textContent = "Can't reach MyAnimeList — see the notice above.";
-      } else {
-        $("#searchHint").textContent = "Search failed (rate limit?). Try again in a moment.";
-      }
+      // Any failure means we can't give the user results, so offer manual entry.
+      markApiDown(reasonFor(err));
+      $("#searchHint").textContent = "Search unavailable — see the notice above.";
     } finally {
       $("#searchSpinner").hidden = true;
     }
