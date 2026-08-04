@@ -122,6 +122,30 @@ main { position: relative; z-index: 1; padding: 28px; max-width: 1200px; margin:
 h2 { font-family: var(--display); font-style: italic; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.6px; }
 
+/* ---------- API status banner ---------- */
+.api-banner {
+  display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+  padding: 14px 18px; border-radius: var(--radius);
+  background: linear-gradient(120deg, rgba(255, 203, 69, 0.14), rgba(255, 46, 116, 0.10));
+  border: 1px solid rgba(255, 203, 69, 0.45);
+  box-shadow: 0 0 26px rgba(255, 203, 69, 0.12);
+}
+.api-banner .api-icon { font-size: 22px; line-height: 1; }
+.api-banner .api-msg { margin: 0; flex: 1; font-size: 14px; color: var(--text); line-height: 1.5; }
+.api-banner .api-msg strong { color: var(--gold); }
+.api-banner .api-actions { display: flex; align-items: center; gap: 8px; }
+.api-banner .ghost-btn { margin-left: 0; }
+.api-banner.compact { padding: 10px 16px; }
+.api-banner.compact .api-msg { font-size: 13px; }
+
+#manualImgUrl {
+  width: 100%; margin-top: 10px;
+  background: rgba(7, 6, 15, 0.7); border: 1px solid var(--line);
+  border-radius: 11px; padding: 11px 14px; color: var(--text);
+  font-size: 14px; font-family: var(--body); outline: none; transition: 0.15s;
+}
+#manualImgUrl:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(25, 227, 255, 0.16); }
+
 /* ---------- Setup ---------- */
 .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
 @media (max-width: 880px) { .setup-grid { grid-template-columns: 1fr; } }
@@ -376,6 +400,12 @@ h2 { font-family: var(--display); font-style: italic; font-weight: 800;
   .view-actions { flex-direction: column; align-items: stretch; gap: 8px; }
   .view-actions .primary-btn { white-space: nowrap; }
   .status-pill { text-align: center; }
+
+  .api-banner { flex-wrap: wrap; gap: 10px; padding: 14px; }
+  .api-banner .api-msg { flex: 1 1 100%; order: 2; }
+  .api-banner .api-icon { order: 1; }
+  .api-banner .api-actions { order: 3; width: 100%; flex-direction: column; align-items: stretch; }
+  .api-banner .ghost-btn { text-align: center; }
 
   .roster-head { flex-direction: column; align-items: stretch; gap: 12px; }
   .roster-actions { width: 100%; flex-direction: column; align-items: stretch; }

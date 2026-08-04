@@ -51,6 +51,28 @@ async function throttle() {
   lastFetch = Date.now();
 }
 
+/* ---------- API availability ----------
+   "online" = Jikan answered (even an HTTP error like 429 means it's reachable).
+   "offline" = the request never got through (no network / DNS / timeout). */
+let apiStatus = "unknown";
+let manualMode = false;
+
+async function checkApiHealth() {
+  if (navigator.onLine === false) { apiStatus = "offline"; renderApiBanner(); return apiStatus; }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    await fetch(`${JIKAN}/anime?q=one&limit=1`, { signal: ctrl.signal });
+    apiStatus = "online";
+  } catch (err) {
+    apiStatus = "offline";
+  } finally {
+    clearTimeout(timer);
+  }
+  renderApiBanner();
+  return apiStatus;
+}
+
 async function searchAnime(query) {
   const key = query.toLowerCase().trim();
   if (searchCache.has(key)) return searchCache.get(key);
@@ -192,7 +214,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 
 function imgTag(src, cls) {
   return src
-    ? `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" />`
+    ? `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls} placeholder-img',textContent:'no image'}))" />`
     : `<div class="${cls} placeholder-img">no image</div>`;
 }
 
@@ -213,6 +235,63 @@ function updateNav() {
   const hasBracket = state.rounds.length > 0;
   $("#nav").querySelector('[data-view="bracket"]').disabled = !hasBracket;
   $("#nav").querySelector('[data-view="vote"]').disabled = !hasBracket;
+}
+
+/* ---- Setup: API status banner ---- */
+function renderApiBanner() {
+  const banner = $("#apiBanner");
+  if (apiStatus !== "offline") { banner.hidden = true; return; }
+  banner.hidden = false;
+  banner.classList.toggle("compact", manualMode);
+  $("#apiMsg").innerHTML = manualMode
+    ? `<strong>Manual mode.</strong> MyAnimeList search is offline — competitors are added by name.`
+    : `<strong>MyAnimeList search is unavailable.</strong> Proceed without it and add competitors by name?`;
+  $("#apiManualBtn").hidden = manualMode;
+}
+
+function enterManualMode() {
+  manualMode = true;
+  $("#manualImgUrl").hidden = false;
+  $("#searchInput").placeholder = "Type a competitor name, then press Enter";
+  $("#searchInput").value = "";
+  $("#searchHint").textContent = "Press Enter to add each competitor. Image URL is optional.";
+  renderResults([]);
+  renderApiBanner();
+  $("#searchInput").focus();
+}
+
+function exitManualMode() {
+  manualMode = false;
+  $("#manualImgUrl").hidden = true;
+  $("#manualImgUrl").value = "";
+  $("#searchInput").placeholder = "Search an anime title…";
+  $("#searchHint").textContent = "Type at least 2 characters. Results come from MyAnimeList via Jikan.";
+  renderApiBanner();
+}
+
+// Build a competitor from typed input; same shape as a Jikan result so the
+// bracket, voting and champion views treat it identically.
+function addManualCompetitor() {
+  const name = $("#searchInput").value.trim();
+  if (!name) return;
+  if (state.roster.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+    $("#searchHint").textContent = `"${name}" is already in the roster.`;
+    return;
+  }
+  addToRoster({
+    id: `manual-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
+    name,
+    img: $("#manualImgUrl").value.trim(),
+    synopsis: "",
+    year: "",
+    type: "Manual",
+    episodes: null,
+    manual: true,
+  });
+  $("#searchInput").value = "";
+  $("#manualImgUrl").value = "";
+  $("#searchHint").textContent = "Added. Type the next competitor and press Enter.";
+  $("#searchInput").focus();
 }
 
 /* ---- Setup: search results ---- */
@@ -471,6 +550,7 @@ document.head.appendChild(kf);
    ============================================================ */
 let searchTimer = null;
 $("#searchInput").addEventListener("input", e => {
+  if (manualMode) return; // typed names are added on Enter, not searched
   const q = e.target.value.trim();
   clearTimeout(searchTimer);
   if (q.length < 2) { renderResults([]); $("#searchHint").textContent = "Type at least 2 characters."; return; }
@@ -479,14 +559,42 @@ $("#searchInput").addEventListener("input", e => {
     $("#searchHint").textContent = "Searching MyAnimeList…";
     try {
       const items = await searchAnime(q);
+      apiStatus = "online";
+      renderApiBanner();
       renderResults(items);
       $("#searchHint").textContent = items.length ? `${items.length} results — click to add.` : "No matches found.";
     } catch (err) {
-      $("#searchHint").textContent = "Search failed (rate limit?). Try again in a moment.";
+      // fetch() throws TypeError when the request never reached Jikan; an
+      // "Jikan <status>" Error means the API answered (e.g. rate limited).
+      if (err instanceof TypeError) {
+        apiStatus = "offline";
+        renderApiBanner();
+        $("#searchHint").textContent = "Can't reach MyAnimeList — see the notice above.";
+      } else {
+        $("#searchHint").textContent = "Search failed (rate limit?). Try again in a moment.";
+      }
     } finally {
       $("#searchSpinner").hidden = true;
     }
   }, 450);
+});
+
+$("#searchInput").addEventListener("keydown", e => {
+  if (e.key === "Enter" && manualMode) { e.preventDefault(); addManualCompetitor(); }
+});
+$("#manualImgUrl").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); addManualCompetitor(); }
+});
+
+$("#apiManualBtn").addEventListener("click", enterManualMode);
+$("#apiRetryBtn").addEventListener("click", async () => {
+  $("#apiRetryBtn").disabled = true;
+  const prev = $("#apiMsg").innerHTML;
+  $("#apiMsg").textContent = "Checking connection…";
+  const status = await checkApiHealth();
+  $("#apiRetryBtn").disabled = false;
+  if (status === "online") exitManualMode();
+  else if ($("#apiMsg").textContent === "Checking connection…") $("#apiMsg").innerHTML = prev;
 });
 
 $("#shuffleBtn").addEventListener("click", shuffleRoster);
@@ -522,3 +630,4 @@ updateNav();
 if (tournamentChampion()) setView("champion");
 else if (state.rounds.length) setView("bracket");
 else setView("setup");
+checkApiHealth();

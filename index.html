@@ -24,6 +24,15 @@
   <main id="app">
     <!-- ============ SETUP VIEW ============ -->
     <section class="view" data-view="setup">
+      <div class="api-banner" id="apiBanner" hidden>
+        <span class="api-icon">⚠️</span>
+        <p class="api-msg" id="apiMsg"></p>
+        <div class="api-actions">
+          <button class="ghost-btn" id="apiRetryBtn">Retry</button>
+          <button class="primary-btn" id="apiManualBtn">Add manually →</button>
+        </div>
+      </div>
+
       <div class="setup-grid">
         <div class="panel">
           <h2>Find competitors</h2>
@@ -31,6 +40,7 @@
             <input id="searchInput" type="text" placeholder="Search an anime title…" autocomplete="off" />
             <span class="spinner" id="searchSpinner" hidden></span>
           </div>
+          <input id="manualImgUrl" type="url" placeholder="Poster image URL (optional)" autocomplete="off" hidden />
           <p class="hint" id="searchHint">Type at least 2 characters. Results come from MyAnimeList via Jikan.</p>
           <div class="results" id="searchResults"></div>
         </div>
