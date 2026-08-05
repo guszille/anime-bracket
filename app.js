@@ -51,6 +51,136 @@ async function throttle() {
   lastFetch = Date.now();
 }
 
+/* ============================================================
+   MyAnimeList link import
+   A pasted MAL URL carries the anime id, so it resolves exactly.
+   Three layers, first success wins:
+     1. Jikan by-id      — structured, first-party, fast
+     2. proxy + scrape   — when Jikan is down but MAL itself is up
+     3. URL slug         — name only; needs no network at all
+   ============================================================ */
+const MAL_URL_RE = /myanimelist\.net\/anime\/(\d+)(?:\/([^/?#\s]+))?/ig;
+// Public CORS proxies, tried in order. They come and go, hence the list.
+const MAL_PROXIES = [
+  target => `https://corsproxy.io/?${encodeURIComponent(target)}`,
+  target => `https://r.jina.ai/${target}`,
+];
+
+// All anime links in a blob of text (one per line when pasting in bulk), deduped.
+function parseMalLinks(text) {
+  const seen = new Set();
+  const out = [];
+  for (const m of text.matchAll(MAL_URL_RE)) {
+    const id = Number(m[1]);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, slug: m[2] || "" });
+  }
+  return out;
+}
+
+function slugToName(slug) {
+  return decodeURIComponent(slug).replace(/_/g, " ").trim();
+}
+
+async function fetchAnimeById(id) {
+  await throttle();
+  const res = await fetch(`${JIKAN}/anime/${id}`);
+  if (!res.ok) {
+    const err = new Error(`Jikan ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  const json = await res.json();
+  return mapAnime(json.data);       // by-id returns one object, not an array
+}
+
+// Read the public MAL page through a proxy and pull its Open Graph tags.
+// DOMParser (not regex) so HTML entities decode themselves.
+async function scrapeMalViaProxy(id) {
+  const target = `https://myanimelist.net/anime/${id}`;
+  for (const proxy of MAL_PROXIES) {
+    try {
+      const res = await fetch(proxy(target));
+      if (!res.ok) continue;
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      const meta = p => doc.querySelector(`meta[property="${p}"]`)?.content || "";
+      const name = meta("og:title");
+      if (!name) continue;
+      const eps = doc.body.textContent.match(/Episodes:\s*(\d+)/);
+      return {
+        id,
+        name,
+        img: meta("og:image"),
+        synopsis: meta("og:description") || "No synopsis available.",
+        year: "", type: "",
+        episodes: eps ? Number(eps[1]) : null,
+        source: "scraped",
+      };
+    } catch (e) { /* try the next proxy */ }
+  }
+  return null;
+}
+
+// Always returns a competitor. Every layer keys on the numeric MAL id so
+// addToRoster's dedupe works across layers and against search results.
+async function resolveMalLink({ id, slug }) {
+  try {
+    const data = await fetchAnimeById(id);
+    markApiUp();
+    return data;
+  } catch (err) {
+    markApiDown(reasonFor(err));
+  }
+  const scraped = await scrapeMalViaProxy(id);
+  if (scraped) return scraped;
+  return {
+    id,
+    name: slug ? slugToName(slug) : `MAL #${id}`,
+    img: "", synopsis: "", year: "", type: "Link",
+    episodes: null,
+    source: "slug",
+  };
+}
+
+let importing = false;
+let lastImported = [];   // drives the "Add all" bar; [] for ordinary searches
+
+async function importMalLinks(links) {
+  if (importing) return;
+  importing = true;
+  $("#searchSpinner").hidden = false;
+  const items = [];
+  try {
+    for (let i = 0; i < links.length; i++) {
+      $("#searchHint").textContent = `Importing ${i + 1} of ${links.length}…`;
+      items.push(await resolveMalLink(links[i]));
+      lastImported = items;
+      renderResults(items);          // show cards as they arrive
+    }
+    const partial = items.filter(it => it.source).length;
+    $("#searchHint").textContent = partial
+      ? `Imported ${items.length} — ${partial} with limited data. Click to add.`
+      : `Imported ${items.length} from MyAnimeList. Click to add.`;
+  } finally {
+    importing = false;
+    $("#searchSpinner").hidden = true;
+  }
+}
+
+function renderImportBar(items) {
+  const bar = $("#importBar");
+  const pending = items.filter(it => !state.roster.some(c => c.id === it.id));
+  bar.hidden = pending.length === 0;
+  if (bar.hidden) return;
+  $("#importCount").textContent = `${pending.length} imported from ${pending.length > 1 ? "links" : "link"}`;
+  $("#importAddAll").textContent = `Add all ${pending.length}`;
+  $("#importAddAll").onclick = () => {
+    pending.forEach(addToRoster);
+    renderImportBar(items);
+  };
+}
+
 /* ---------- API availability ----------
    "online"  = Jikan returned usable results.
    "offline" = Jikan can't serve results right now, for any reason: no network,
@@ -63,6 +193,13 @@ let manualMode = false;
 function markApiDown(reason) {
   apiStatus = "offline";
   apiReason = reason;
+  renderApiBanner();
+}
+
+// Any successful Jikan call clears a stale outage banner.
+function markApiUp() {
+  apiStatus = "online";
+  apiReason = "";
   renderApiBanner();
 }
 
@@ -103,7 +240,15 @@ async function searchAnime(query) {
     throw err;
   }
   const json = await res.json();
-  const items = (json.data || []).map(a => ({
+  const items = (json.data || []).map(mapAnime);
+  searchCache.set(key, items);
+  return items;
+}
+
+// Jikan payload -> competitor shape. Shared by search (array of these) and
+// by-ID lookups (a single one), so both produce identical objects.
+function mapAnime(a) {
+  return {
     id: a.mal_id,
     name: a.title_english || a.title,
     img: a.images?.jpg?.image_url || "",
@@ -111,9 +256,7 @@ async function searchAnime(query) {
     year: a.year || a.aired?.prop?.from?.year || "",
     type: a.type || "",
     episodes: a.episodes || null,
-  }));
-  searchCache.set(key, items);
-  return items;
+  };
 }
 
 /* ============================================================
@@ -336,6 +479,7 @@ function renderResults(items) {
     const card = el("div", `result-card${added ? " added" : ""}`);
     card.innerHTML = `
       ${imgTag(it.img, "")}
+      ${srcBadge(it.source)}
       <div class="meta">
         <div class="name">${esc(it.name)}</div>
         <div class="sub">${esc([it.type, it.year, epsLabel(it.episodes)].filter(Boolean).join(" · "))}</div>
@@ -343,6 +487,14 @@ function renderResults(items) {
     card.addEventListener("click", () => addToRoster(it));
     box.appendChild(card);
   }
+  renderImportBar(lastImported);
+}
+
+// Flags link imports that couldn't use Jikan, so partial data is visible.
+function srcBadge(source) {
+  if (source === "scraped") return `<span class="src-badge">scraped</span>`;
+  if (source === "slug") return `<span class="src-badge warn">name only</span>`;
+  return "";
 }
 
 /* ---- Setup: roster ---- */
@@ -577,18 +729,27 @@ document.head.appendChild(kf);
    ============================================================ */
 let searchTimer = null;
 $("#searchInput").addEventListener("input", e => {
-  if (manualMode) return; // typed names are added on Enter, not searched
   const q = e.target.value.trim();
   clearTimeout(searchTimer);
+
+  // A pasted MyAnimeList link wins over both search and manual mode — it works
+  // in either, and the slug layer means it still resolves with no network.
+  const links = parseMalLinks(q);
+  if (links.length) {
+    e.target.value = "";
+    importMalLinks(links);
+    return;
+  }
+
+  lastImported = [];      // leaving link-import context; drop the "Add all" bar
+  if (manualMode) return; // typed names are added on Enter, not searched
   if (q.length < 2) { renderResults([]); $("#searchHint").textContent = "Type at least 2 characters."; return; }
   searchTimer = setTimeout(async () => {
     $("#searchSpinner").hidden = false;
     $("#searchHint").textContent = "Searching MyAnimeList…";
     try {
       const items = await searchAnime(q);
-      apiStatus = "online";
-      apiReason = "";
-      renderApiBanner();
+      markApiUp();
       renderResults(items);
       $("#searchHint").textContent = items.length ? `${items.length} results — click to add.` : "No matches found.";
     } catch (err) {

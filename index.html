@@ -41,7 +41,11 @@
             <span class="spinner" id="searchSpinner" hidden></span>
           </div>
           <input id="manualImgUrl" type="url" placeholder="Poster image URL (optional)" autocomplete="off" hidden />
-          <p class="hint" id="searchHint">Type at least 2 characters. Results come from MyAnimeList via Jikan.</p>
+          <p class="hint" id="searchHint">Type at least 2 characters, or paste MyAnimeList links (one per line).</p>
+          <div class="import-bar" id="importBar" hidden>
+            <span class="import-count" id="importCount"></span>
+            <button class="primary-btn" id="importAddAll">Add all</button>
+          </div>
           <div class="results" id="searchResults"></div>
         </div>
 

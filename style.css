@@ -199,6 +199,25 @@ h2 { font-family: var(--display); font-style: italic; font-weight: 800;
   color: var(--win); background: rgba(7, 6, 15, 0.5);
 }
 .result-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; background: var(--panel); }
+.src-badge {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  font-family: var(--display); font-style: italic; font-weight: 700;
+  font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 5px;
+  background: rgba(25, 227, 255, 0.9); color: #06131a;
+}
+.src-badge.warn { background: rgba(255, 203, 69, 0.92); color: #241c00; }
+
+/* Bulk link-import bar */
+.import-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 0 0 12px; padding: 10px 14px;
+  background: rgba(25, 227, 255, 0.08);
+  border: 1px solid rgba(25, 227, 255, 0.35);
+  border-radius: 11px;
+}
+.import-count { font-size: 13px; color: var(--text); font-weight: 600; }
+.import-bar .primary-btn { padding: 8px 16px; font-size: 14px; }
 .result-card .meta { padding: 8px 10px; }
 .result-card .meta .name { font-size: 13px; font-weight: 700; line-height: 1.25; }
 .result-card .meta .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
@@ -406,6 +425,8 @@ h2 { font-family: var(--display); font-style: italic; font-weight: 800;
   .api-banner .api-icon { order: 1; }
   .api-banner .api-actions { order: 3; width: 100%; flex-direction: column; align-items: stretch; }
   .api-banner .ghost-btn { text-align: center; }
+
+  .import-bar { flex-direction: column; align-items: stretch; gap: 10px; text-align: center; }
 
   .roster-head { flex-direction: column; align-items: stretch; gap: 12px; }
   .roster-actions { width: 100%; flex-direction: column; align-items: stretch; }
